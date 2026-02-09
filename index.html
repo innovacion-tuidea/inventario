@@ -122,6 +122,10 @@
                             <option value="Tecnología">Tecnología</option>
                             <option value="Limpieza">Limpieza</option>
                             <option value="Mobiliario">Mobiliario</option>
+                            <option value="Taller">Taller</option>
+                            <option value="Aula">Aula</option>
+                            <option value="Facilitador">Facilitador</option>
+                            <option value="Cafetería">Cafetería</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -317,7 +321,17 @@
 
     // 4. Utilidades
     function obtenerColorCategoria(cat) {
-        const mapa = { 'Oficina': 'info', 'Tecnología': 'dark', 'Limpieza': 'success', 'Mobiliario': 'warning' };
+        // AQUÍ AGREGAMOS LOS COLORES PARA LAS NUEVAS CATEGORÍAS
+        const mapa = { 
+            'Oficina': 'info', 
+            'Tecnología': 'dark', 
+            'Limpieza': 'success', 
+            'Mobiliario': 'warning',
+            'Taller': 'danger',      // Rojo
+            'Aula': 'primary',       // Azul
+            'Facilitador': 'secondary', // Gris
+            'Cafetería': 'danger'    // Rojo
+        };
         return mapa[cat] || 'secondary';
     }
 
