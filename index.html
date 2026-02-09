@@ -328,20 +328,41 @@
     }
 
     function exportarExcel() {
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "ID,Nombre,Categoria,Stock Actual,Stock Inicial,Stock Minimo,Fecha Entrada\n"; 
+        // 1. Definimos el separador (Punto y coma es mejor para Excel en Español)
+        const SEPARADOR = ";";
         
+        // 2. Agregamos el BOM (\uFEFF) para que Excel reconozca tildes y ñ
+        let csvContent = "\uFEFF";
+        
+        // 3. Encabezados
+        const encabezados = ["ID", "Nombre Material", "Categoría", "Stock Actual", "Stock Inicial", "Mínimo", "Fecha Entrada"];
+        csvContent += encabezados.join(SEPARADOR) + "\n";
+        
+        // 4. Filas de datos
         inventario.forEach(row => {
             const inicial = row.stockInicial || row.cantidad;
-            csvContent += `${row.id},"${row.nombre}",${row.categoria},${row.cantidad},${inicial},${row.minStock},${row.fecha}\n`;
+            // Preparamos la fila asegurando que el nombre no rompa el formato (lo ponemos entre comillas)
+            const fila = [
+                row.id,
+                `"${row.nombre}"`, // Comillas para proteger nombres con comas
+                row.categoria,
+                row.cantidad,
+                inicial,
+                row.minStock,
+                row.fecha
+            ];
+            csvContent += fila.join(SEPARADOR) + "\n";
         });
 
-        const encodedUri = encodeURI(csvContent);
+        // 5. Crear el archivo Blob (Más seguro que el método anterior)
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "inventario_innovacion.csv");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "inventario_innovacion_pro.csv");
         document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
 
     // Inicio
