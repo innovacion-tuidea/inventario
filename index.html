@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Materiales Innovación</title>
+    <title>Inventario Materiales Innovación Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -18,6 +18,8 @@
             background: linear-gradient(180deg, #1a237e 0%, #283593 100%);
             color: white;
             padding-top: 20px;
+            position: sticky;
+            top: 0;
         }
         .brand-logo { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; text-align: center; }
         
@@ -27,21 +29,44 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: transform 0.2s;
             background: white;
+            position: relative;
+            overflow: hidden;
         }
-        .card-material:hover { transform: translateY(-5px); }
+        .card-material:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
         
         .stock-badge {
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: bold;
             color: var(--primary-color);
+            line-height: 1;
         }
         .btn-circle {
-            width: 35px; height: 35px; border-radius: 50%; padding: 0;
+            width: 32px; height: 32px; border-radius: 50%; padding: 0;
             display: inline-flex; align-items: center; justify-content: center;
         }
         
+        .category-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .date-info {
+            font-size: 0.75rem;
+            color: #6c757d;
+            background: #f1f3f5;
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        
         /* Alerta de stock bajo */
-        .low-stock { color: #dc3545; }
+        .low-stock-text { color: #dc3545 !important; }
+        .low-stock-border { border: 2px solid #dc3545 !important; }
     </style>
 </head>
 <body>
@@ -50,24 +75,62 @@
     <div class="row">
         <div class="col-md-2 sidebar d-none d-md-block">
             <div class="brand-logo">
-                <i class="fas fa-lightbulb"></i> Innova Inventario
+                <i class="fas fa-cubes"></i> Innova Pro
             </div>
             <ul class="nav flex-column">
                 <li class="nav-item"><a class="nav-link text-white active" href="#"><i class="fas fa-chart-line me-2"></i> Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link text-white-50" href="#"><i class="fas fa-box me-2"></i> Productos</a></li>
+                <li class="nav-item"><a class="nav-link text-white-50" href="#" onclick="exportarExcel()"><i class="fas fa-file-excel me-2"></i> Exportar Datos</a></li>
                 <li class="nav-item"><a class="nav-link text-white-50" href="#"><i class="fas fa-history me-2"></i> Historial</a></li>
             </ul>
+            <div class="mt-5 px-3">
+                <small class="text-white-50">Resumen Rápido</small>
+                <div class="d-flex justify-content-between text-white mt-2">
+                    <span>Total Items:</span>
+                    <span id="totalItemsDisplay" class="fw-bold">0</span>
+                </div>
+            </div>
         </div>
 
         <div class="col-md-10 p-4">
-            <h2 class="mb-4">Panel de Control de Materiales</h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-dark"><i class="fas fa-warehouse text-primary"></i> Control de Inventario</h2>
+                <div class="w-25 position-relative">
+                    <input type="text" id="buscador" class="form-control rounded-pill ps-4" placeholder="Buscar material..." onkeyup="renderizar()">
+                    <i class="fas fa-search position-absolute text-muted" style="right: 15px; top: 10px;"></i>
+                </div>
+            </div>
             
-            <div class="card p-3 mb-4 shadow-sm border-0">
-                <div class="row g-2 align-items-center">
-                    <div class="col-auto"><strong>Nuevo Material:</strong></div>
-                    <div class="col"><input type="text" id="nombreItem" class="form-control" placeholder="Ej: Resma de Papel"></div>
-                    <div class="col-2"><input type="number" id="cantidadItem" class="form-control" placeholder="Cant." value="1"></div>
-                    <div class="col-auto"><button onclick="agregarNuevo()" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar</button></div>
+            <div class="card p-4 mb-4 shadow-sm border-0 bg-white">
+                <h6 class="text-muted mb-3 text-uppercase fw-bold" style="font-size: 0.8rem;">Ingreso de Mercancía</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Nombre del Material</label>
+                        <input type="text" id="nombreItem" class="form-control" placeholder="Ej: Laptop Dell">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Categoría</label>
+                        <select id="categoriaItem" class="form-select">
+                            <option value="Oficina">Oficina</option>
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Limpieza">Limpieza</option>
+                            <option value="Mobiliario">Mobiliario</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Fecha Recepción</label>
+                        <input type="date" id="fechaItem" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Stock Inicial</label>
+                        <input type="number" id="cantidadItem" class="form-control" placeholder="0" min="1">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label small text-muted">Mínimo</label>
+                        <input type="number" id="minimoItem" class="form-control" value="5" title="Alerta de stock bajo">
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button onclick="agregarNuevo()" class="btn btn-primary"><i class="fas fa-plus-circle me-1"></i> Registrar</button>
+                    </div>
                 </div>
             </div>
 
@@ -78,78 +141,151 @@
 </div>
 
 <script>
-    // 1. Datos iniciales (simulando base de datos)
-    let inventario = JSON.parse(localStorage.getItem('innovaData')) || [
-        { id: 1, nombre: "Grapadoras", cantidad: 5, icono: "fa-stapler" },
-        { id: 2, nombre: "Tijeras", cantidad: 12, icono: "fa-scissors" },
-        { id: 3, nombre: "Cartulinas (Paq)", cantidad: 3, icono: "fa-sticky-note" }
+    // 1. Configuración Inicial y Datos
+    // Seteamos la fecha de hoy por defecto en el input
+    document.getElementById('fechaItem').valueAsDate = new Date();
+
+    let inventario = JSON.parse(localStorage.getItem('innovaDataPro')) || [
+        { id: 1, nombre: "Papel Bond A4", cantidad: 50, categoria: "Oficina", fecha: "2023-10-01", minStock: 10 },
+        { id: 2, nombre: "Monitor 24'", cantidad: 3, categoria: "Tecnología", fecha: "2023-11-15", minStock: 5 },
+        { id: 3, nombre: "Desinfectante", cantidad: 12, categoria: "Limpieza", fecha: "2024-01-20", minStock: 5 }
     ];
 
-    // 2. Función para dibujar en pantalla
+    // 2. Renderizado Profesional
     function renderizar() {
         const contenedor = document.getElementById('contenedorInventario');
-        contenedor.innerHTML = ''; // Limpiar
+        const busqueda = document.getElementById('buscador').value.toLowerCase();
+        const totalDisplay = document.getElementById('totalItemsDisplay');
+        
+        contenedor.innerHTML = ''; 
+        let conteoTotal = 0;
 
-        inventario.forEach((item, index) => {
-            // Determinar si el stock es bajo (menos de 5)
-            const alerta = item.cantidad < 5 ? 'text-danger' : 'text-success';
-            const borde = item.cantidad < 5 ? 'border-danger' : 'border-0';
+        // Filtrado por búsqueda
+        const itemsFiltrados = inventario.filter(item => item.nombre.toLowerCase().includes(busqueda));
+
+        itemsFiltrados.forEach((item, index) => {
+            conteoTotal += item.cantidad;
+            
+            // Lógica de Alertas
+            const esBajo = item.cantidad <= item.minStock;
+            const claseAlerta = esBajo ? 'low-stock-text' : 'text-primary';
+            const claseBorde = esBajo ? 'low-stock-border' : '';
+            const badgeCat = obtenerColorCategoria(item.categoria);
 
             const html = `
-                <div class="col-md-3 mb-4">
-                    <div class="card card-material p-3 ${borde}" style="${item.cantidad < 5 ? 'border:1px solid red;' : ''}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="card-title text-secondary">${item.nombre}</h5>
-                                <div class="stock-badge ${alerta}">${item.cantidad}</div>
-                                <small class="text-muted">Unidades</small>
+                <div class="col-md-3 mb-4 fade-in">
+                    <div class="card card-material p-3 ${claseBorde} h-100">
+                        <span class="badge category-badge bg-${badgeCat}">${item.categoria}</span>
+                        
+                        <div class="mt-3">
+                            <h5 class="card-title text-dark fw-bold text-truncate" title="${item.nombre}">${item.nombre}</h5>
+                            <div class="d-flex justify-content-between align-items-end mt-2">
+                                <div>
+                                    <div class="stock-badge ${claseAlerta}">${item.cantidad}</div>
+                                    <small class="text-muted" style="font-size:0.7rem">Mínimo: ${item.minStock}</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="date-info"><i class="far fa-calendar-alt me-1"></i>${formatearFecha(item.fecha)}</div>
+                                </div>
                             </div>
-                            <i class="fas fa-box fa-2x text-black-50"></i>
                         </div>
-                        <div class="mt-3 d-flex justify-content-between">
-                            <button onclick="cambiarStock(${index}, -1)" class="btn btn-outline-danger btn-circle"><i class="fas fa-minus"></i></button>
-                            <button onclick="borrarItem(${index})" class="btn btn-sm text-muted"><i class="fas fa-trash"></i></button>
-                            <button onclick="cambiarStock(${index}, 1)" class="btn btn-outline-success btn-circle"><i class="fas fa-plus"></i></button>
+
+                        <hr class="my-3 opacity-25">
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-group" role="group">
+                                <button onclick="cambiarStock(${item.id}, -1)" class="btn btn-outline-danger btn-circle"><i class="fas fa-minus"></i></button>
+                                <button onclick="cambiarStock(${item.id}, 1)" class="btn btn-outline-success btn-circle ms-2"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <button onclick="borrarItem(${item.id})" class="btn btn-link text-muted p-0"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
                 </div>
             `;
             contenedor.innerHTML += html;
         });
-        
-        // Guardar en el navegador para que no se borre al recargar
-        localStorage.setItem('innovaData', JSON.stringify(inventario));
+
+        totalDisplay.innerText = conteoTotal;
+        localStorage.setItem('innovaDataPro', JSON.stringify(inventario));
     }
 
-    // 3. Funciones de Lógica
-    function cambiarStock(index, delta) {
-        if (inventario[index].cantidad + delta >= 0) {
+    // 3. Lógica de Negocio
+    function agregarNuevo() {
+        const nombre = document.getElementById('nombreItem').value;
+        const cat = document.getElementById('categoriaItem').value;
+        const fecha = document.getElementById('fechaItem').value;
+        const cant = parseInt(document.getElementById('cantidadItem').value);
+        const min = parseInt(document.getElementById('minimoItem').value);
+        
+        if(nombre && cant && fecha) {
+            inventario.push({ 
+                id: Date.now(), 
+                nombre: nombre, 
+                cantidad: cant, 
+                categoria: cat,
+                fecha: fecha,
+                minStock: min || 5
+            });
+            
+            // Limpiar campos clave
+            document.getElementById('nombreItem').value = '';
+            document.getElementById('cantidadItem').value = '';
+            renderizar();
+        } else {
+            alert("⚠️ Por favor completa el nombre, la cantidad y la fecha.");
+        }
+    }
+
+    function cambiarStock(id, delta) {
+        const index = inventario.findIndex(item => item.id === id);
+        if (index !== -1 && inventario[index].cantidad + delta >= 0) {
             inventario[index].cantidad += delta;
             renderizar();
         }
     }
 
-    function agregarNuevo() {
-        const nombre = document.getElementById('nombreItem').value;
-        const cant = parseInt(document.getElementById('cantidadItem').value);
+    function borrarItem(id) {
+        if(confirm("¿Eliminar este registro permanentemente?")) {
+            inventario = inventario.filter(item => item.id !== id);
+            renderizar();
+        }
+    }
+
+    // 4. Utilidades Profesionales
+    function obtenerColorCategoria(cat) {
+        const mapa = {
+            'Oficina': 'info',
+            'Tecnología': 'dark',
+            'Limpieza': 'success',
+            'Mobiliario': 'warning'
+        };
+        return mapa[cat] || 'secondary';
+    }
+
+    function formatearFecha(fechaString) {
+        // Convierte 2023-10-01 a 01/10/2023
+        if(!fechaString) return "-";
+        const [year, month, day] = fechaString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+
+    function exportarExcel() {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "ID,Nombre,Categoria,Cantidad,Stock Minimo,Fecha Entrada\n"; // Encabezados
         
-        if(nombre && cant) {
-            inventario.push({ id: Date.now(), nombre: nombre, cantidad: cant });
-            document.getElementById('nombreItem').value = ''; // Limpiar input
-            renderizar();
-        } else {
-            alert("Por favor escribe un nombre");
-        }
+        inventario.forEach(row => {
+            csvContent += `${row.id},"${row.nombre}",${row.categoria},${row.cantidad},${row.minStock},${row.fecha}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "inventario_innovacion.csv");
+        document.body.appendChild(link);
+        link.click();
     }
 
-    function borrarItem(index) {
-        if(confirm("¿Seguro que quieres eliminar este material del sistema?")) {
-            inventario.splice(index, 1);
-            renderizar();
-        }
-    }
-
-    // Arrancar el sistema
+    // Inicio
     renderizar();
 </script>
 
