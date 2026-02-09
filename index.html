@@ -107,7 +107,9 @@
             </div>
             
             <div class="card p-4 mb-4 shadow-sm border-0 bg-white">
-                <h6 class="text-muted mb-3 text-uppercase fw-bold" style="font-size: 0.8rem;">Ingreso de Mercancía</h6>
+                <h6 class="text-muted mb-3 text-uppercase fw-bold" style="font-size: 0.8rem;">Gestión de Mercancía</h6>
+                <input type="hidden" id="idEdicion">
+                
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label small text-muted">Nombre del Material</label>
@@ -127,7 +129,7 @@
                         <input type="date" id="fechaItem" class="form-control">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small text-muted">Stock Inicial</label>
+                        <label class="form-label small text-muted">Stock Actual</label>
                         <input type="number" id="cantidadItem" class="form-control" placeholder="0" min="1">
                     </div>
                     <div class="col-md-1">
@@ -135,7 +137,7 @@
                         <input type="number" id="minimoItem" class="form-control" value="5" title="Alerta de stock bajo">
                     </div>
                     <div class="col-md-2 d-grid">
-                        <button onclick="agregarNuevo()" class="btn btn-primary"><i class="fas fa-plus-circle me-1"></i> Registrar</button>
+                        <button onclick="procesarFormulario()" id="btnAccion" class="btn btn-primary"><i class="fas fa-plus-circle me-1"></i> Registrar</button>
                     </div>
                 </div>
             </div>
@@ -147,17 +149,17 @@
 </div>
 
 <script>
-    // 1. Configuración Inicial y Datos
-    // Seteamos la fecha de hoy por defecto en el input
+    // 1. Configuración Inicial
     document.getElementById('fechaItem').valueAsDate = new Date();
 
+    // Cargamos datos o iniciamos con ejemplos que incluyen stockInicial
     let inventario = JSON.parse(localStorage.getItem('innovaDataPro')) || [
-        { id: 1, nombre: "Papel Bond A4", cantidad: 50, categoria: "Oficina", fecha: "2023-10-01", minStock: 10 },
-        { id: 2, nombre: "Monitor 24'", cantidad: 3, categoria: "Tecnología", fecha: "2023-11-15", minStock: 5 },
-        { id: 3, nombre: "Desinfectante", cantidad: 12, categoria: "Limpieza", fecha: "2024-01-20", minStock: 5 }
+        { id: 1, nombre: "Papel Bond A4", cantidad: 45, stockInicial: 50, categoria: "Oficina", fecha: "2023-10-01", minStock: 10 },
+        { id: 2, nombre: "Monitor 24'", cantidad: 3, stockInicial: 5, categoria: "Tecnología", fecha: "2023-11-15", minStock: 5 },
+        { id: 3, nombre: "Desinfectante", cantidad: 12, stockInicial: 20, categoria: "Limpieza", fecha: "2024-01-20", minStock: 5 }
     ];
 
-    // 2. Renderizado Profesional
+    // 2. Renderizado
     function renderizar() {
         const contenedor = document.getElementById('contenedorInventario');
         const busqueda = document.getElementById('buscador').value.toLowerCase();
@@ -166,13 +168,14 @@
         contenedor.innerHTML = ''; 
         let conteoTotal = 0;
 
-        // Filtrado por búsqueda
         const itemsFiltrados = inventario.filter(item => item.nombre.toLowerCase().includes(busqueda));
 
-        itemsFiltrados.forEach((item, index) => {
+        itemsFiltrados.forEach((item) => {
             conteoTotal += item.cantidad;
             
-            // Lógica de Alertas
+            // Si el item es viejo y no tiene stockInicial, usamos la cantidad actual
+            const inicial = item.stockInicial || item.cantidad; 
+            
             const esBajo = item.cantidad <= item.minStock;
             const claseAlerta = esBajo ? 'low-stock-text' : 'text-primary';
             const claseBorde = esBajo ? 'low-stock-border' : '';
@@ -188,7 +191,7 @@
                             <div class="d-flex justify-content-between align-items-end mt-2">
                                 <div>
                                     <div class="stock-badge ${claseAlerta}">${item.cantidad}</div>
-                                    <small class="text-muted" style="font-size:0.7rem">Mínimo: ${item.minStock}</small>
+                                    <small class="text-muted d-block" style="font-size:0.7rem">Inicio: <strong>${inicial}</strong> | Mín: ${item.minStock}</small>
                                 </div>
                                 <div class="text-end">
                                     <div class="date-info"><i class="far fa-calendar-alt me-1"></i>${formatearFecha(item.fecha)}</div>
@@ -203,7 +206,10 @@
                                 <button onclick="cambiarStock(${item.id}, -1)" class="btn btn-outline-danger btn-circle"><i class="fas fa-minus"></i></button>
                                 <button onclick="cambiarStock(${item.id}, 1)" class="btn btn-outline-success btn-circle ms-2"><i class="fas fa-plus"></i></button>
                             </div>
-                            <button onclick="borrarItem(${item.id})" class="btn btn-link text-muted p-0"><i class="fas fa-trash-alt"></i></button>
+                            <div>
+                                <button onclick="prepararEdicion(${item.id})" class="btn btn-sm btn-outline-primary border-0" title="Editar"><i class="fas fa-pen"></i></button>
+                                <button onclick="borrarItem(${item.id})" class="btn btn-sm btn-outline-secondary border-0" title="Borrar"><i class="fas fa-trash-alt"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -215,37 +221,89 @@
         localStorage.setItem('innovaDataPro', JSON.stringify(inventario));
     }
 
-    // 3. Lógica de Negocio
-    function agregarNuevo() {
+    // 3. Lógica de Negocio (Agregar y Editar)
+    function procesarFormulario() {
+        const idEdicion = document.getElementById('idEdicion').value;
         const nombre = document.getElementById('nombreItem').value;
         const cat = document.getElementById('categoriaItem').value;
         const fecha = document.getElementById('fechaItem').value;
         const cant = parseInt(document.getElementById('cantidadItem').value);
         const min = parseInt(document.getElementById('minimoItem').value);
-        
-        if(nombre && cant && fecha) {
+
+        if(!nombre || !cant || !fecha) {
+            alert("⚠️ Por favor completa el nombre, la cantidad y la fecha.");
+            return;
+        }
+
+        if (idEdicion) {
+            // MODO EDICIÓN: Actualizar existente
+            const index = inventario.findIndex(item => item.id == idEdicion);
+            if(index !== -1) {
+                inventario[index].nombre = nombre;
+                inventario[index].categoria = cat;
+                inventario[index].fecha = fecha;
+                inventario[index].cantidad = cant;
+                inventario[index].minStock = min;
+                // Si cambiamos la cantidad manual, actualizamos también el inicial
+                inventario[index].stockInicial = cant; 
+                
+                alert("✅ Producto actualizado correctamente");
+            }
+        } else {
+            // MODO REGISTRO: Crear nuevo
             inventario.push({ 
                 id: Date.now(), 
                 nombre: nombre, 
                 cantidad: cant, 
+                stockInicial: cant, // Guardamos el inicio
                 categoria: cat,
                 fecha: fecha,
                 minStock: min || 5
             });
-            
-            // Limpiar campos clave
-            document.getElementById('nombreItem').value = '';
-            document.getElementById('cantidadItem').value = '';
-            renderizar();
-        } else {
-            alert("⚠️ Por favor completa el nombre, la cantidad y la fecha.");
         }
+
+        limpiarFormulario();
+        renderizar();
+    }
+
+    function prepararEdicion(id) {
+        const item = inventario.find(i => i.id === id);
+        if(item) {
+            // Llenar formulario con datos
+            document.getElementById('idEdicion').value = item.id;
+            document.getElementById('nombreItem').value = item.nombre;
+            document.getElementById('categoriaItem').value = item.categoria;
+            document.getElementById('fechaItem').value = item.fecha;
+            document.getElementById('cantidadItem').value = item.cantidad;
+            document.getElementById('minimoItem').value = item.minStock;
+
+            // Cambiar botón a modo edición
+            const btn = document.getElementById('btnAccion');
+            btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Actualizar';
+            btn.className = 'btn btn-warning text-white'; // Color naranja para indicar edición
+            
+            // Llevar al usuario arriba
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function limpiarFormulario() {
+        document.getElementById('idEdicion').value = '';
+        document.getElementById('nombreItem').value = '';
+        document.getElementById('cantidadItem').value = '';
+        document.getElementById('fechaItem').valueAsDate = new Date();
+        
+        // Restaurar botón
+        const btn = document.getElementById('btnAccion');
+        btn.innerHTML = '<i class="fas fa-plus-circle me-1"></i> Registrar';
+        btn.className = 'btn btn-primary';
     }
 
     function cambiarStock(id, delta) {
         const index = inventario.findIndex(item => item.id === id);
         if (index !== -1 && inventario[index].cantidad + delta >= 0) {
             inventario[index].cantidad += delta;
+            // NOTA: No cambiamos stockInicial aquí, solo la cantidad actual
             renderizar();
         }
     }
@@ -257,19 +315,13 @@
         }
     }
 
-    // 4. Utilidades Profesionales
+    // 4. Utilidades
     function obtenerColorCategoria(cat) {
-        const mapa = {
-            'Oficina': 'info',
-            'Tecnología': 'dark',
-            'Limpieza': 'success',
-            'Mobiliario': 'warning'
-        };
+        const mapa = { 'Oficina': 'info', 'Tecnología': 'dark', 'Limpieza': 'success', 'Mobiliario': 'warning' };
         return mapa[cat] || 'secondary';
     }
 
     function formatearFecha(fechaString) {
-        // Convierte 2023-10-01 a 01/10/2023
         if(!fechaString) return "-";
         const [year, month, day] = fechaString.split('-');
         return `${day}/${month}/${year}`;
@@ -277,10 +329,11 @@
 
     function exportarExcel() {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "ID,Nombre,Categoria,Cantidad,Stock Minimo,Fecha Entrada\n"; // Encabezados
+        csvContent += "ID,Nombre,Categoria,Stock Actual,Stock Inicial,Stock Minimo,Fecha Entrada\n"; 
         
         inventario.forEach(row => {
-            csvContent += `${row.id},"${row.nombre}",${row.categoria},${row.cantidad},${row.minStock},${row.fecha}\n`;
+            const inicial = row.stockInicial || row.cantidad;
+            csvContent += `${row.id},"${row.nombre}",${row.categoria},${row.cantidad},${inicial},${row.minStock},${row.fecha}\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
